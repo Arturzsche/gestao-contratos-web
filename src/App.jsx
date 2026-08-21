@@ -34,6 +34,9 @@ export default function App() {
   const [enviandoEmail, setEnviandoEmail] = useState(null);
   const [kpis, setKpis] = useState({ ativos: 0, atencao: 0, critico: 0 });
   
+  // Controle do Modal
+  const [modalMemo, setModalMemo] = useState({ aberto: false, processo: null });
+
   const [busca, setBusca] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('Ativos'); 
   const [ordenacao, setOrdenacao] = useState('vencimento_asc'); 
@@ -53,7 +56,6 @@ export default function App() {
   const carregarDados = async () => {
     try {
       setLoading(true);
-      // Apontando para o Render
       const response = await fetch('https://tce-contratos-api.onrender.com/api/contratos');
       const data = await response.json();
       
@@ -82,7 +84,6 @@ export default function App() {
     formData.append('file', file);
 
     try {
-      // Apontando para o Render
       const response = await fetch('https://tce-contratos-api.onrender.com/api/importar', {
         method: 'POST',
         body: formData,
@@ -102,16 +103,19 @@ export default function App() {
     }
   };
 
-  const handleGerarMemo = (processo) => {
-    // Apontando para o Render
-    const url = `https://tce-contratos-api.onrender.com/api/gerar-memorando/${processo}`;
+  const abrirModalMemo = (processo) => {
+    setModalMemo({ aberto: true, processo: processo });
+  };
+
+  const confirmarGerarMemo = (tipo) => {
+    const url = `https://tce-contratos-api.onrender.com/api/gerar-memorando/${modalMemo.processo}?tipo=${tipo}`;
     window.open(url, '_blank');
+    setModalMemo({ aberto: false, processo: null });
   };
 
   const handleNotificar = async (processo) => {
     setEnviandoEmail(processo); 
     try {
-      // Apontando para o Render
       const response = await fetch(`https://tce-contratos-api.onrender.com/api/enviar-notificacao/${processo}`, {
         method: 'POST',
       });
@@ -174,7 +178,7 @@ export default function App() {
       {/* CONTEÚDO */}
       <div className="p-6 w-full flex flex-col gap-5 flex-1 overflow-hidden">
         
-        {/* CARDS (Fixos) */}
+        {/* CARDS */}
         <section className="grid grid-cols-1 md:grid-cols-4 gap-5 shrink-0">
           <StatCard title="Contratos Ativos" value={loading ? "..." : kpis.ativos} icon={<IconDocument />} />
           <StatCard title="Alerta Prorrogação" value={loading ? "..." : kpis.atencao} icon={<IconAlert />} />
@@ -185,9 +189,8 @@ export default function App() {
         {/* CONTAINER DA TABELA */}
         <section className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col w-full flex-1 overflow-hidden min-h-[400px]">
           
-          {/* BARRA DE FERRAMENTAS DA TABELA */}
+          {/* BARRA DE FERRAMENTAS */}
           <div className="px-5 py-4 border-b border-slate-200 flex justify-between items-center bg-white shrink-0 flex-wrap gap-4">
-            
             <div className="flex items-center gap-6 flex-wrap">
               <div>
                 <h3 className="text-xs font-bold text-slate-900">Mural de Acompanhamento</h3>
@@ -252,7 +255,7 @@ export default function App() {
             </button>
           </div>
           
-          {/* TABELA COM ROLAGEM EXCLUSIVAMENTE VERTICAL */}
+          {/* TABELA */}
           <div className="w-full flex-1 overflow-y-auto overflow-x-hidden bg-white">
             <table className="w-full text-left border-collapse text-xs">
               <thead className="sticky top-0 z-20 bg-slate-50 shadow-[0_1px_0_0_#e2e8f0]">
@@ -288,19 +291,13 @@ export default function App() {
 
                 {!loading && contratosExibidos.map((c, idx) => (
                   <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-slate-900 break-words leading-relaxed">
-                      {c.fornecedor}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 break-words leading-relaxed">
-                      {c.objeto}
-                    </td>
+                    <td className="px-4 py-3 font-semibold text-slate-900 break-words leading-relaxed">{c.fornecedor}</td>
+                    <td className="px-4 py-3 text-slate-600 break-words leading-relaxed">{c.objeto}</td>
                     <td className="px-4 py-3 font-mono font-medium text-slate-800 whitespace-nowrap">{c.processo}</td>
                     <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{c.vigencia_inicio}</td>
                     <td className="px-4 py-3 font-semibold text-slate-900 whitespace-nowrap">{c.vigencia_fim}</td>
                     <td className="px-4 py-3 text-right font-medium text-slate-900 whitespace-nowrap">{c.valor_formatado}</td>
-                    <td className="px-4 py-3 text-slate-600 break-words leading-relaxed">
-                      {c.gestor}
-                    </td>
+                    <td className="px-4 py-3 text-slate-600 break-words leading-relaxed">{c.gestor}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                        <StatusBadge status={c.status} daysLeft={c.dias} />
                     </td>
@@ -308,9 +305,9 @@ export default function App() {
                       {(c.status === 'Crítico' || c.status === 'Atenção') && (
                         <div className="flex items-center justify-center gap-1.5">
                           <button 
-                            onClick={() => handleGerarMemo(c.processo)}
+                            onClick={() => abrirModalMemo(c.processo)}
                             className="text-slate-600 hover:text-slate-900 hover:bg-slate-200 px-2 py-1.5 rounded-md font-semibold text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
-                            title="Visualizar PDF"
+                            title="Gerar Memorando"
                           >
                             Memo
                           </button>
@@ -359,9 +356,47 @@ export default function App() {
               </button>
             </div>
           </div>
-
         </section>
       </div>
+
+      {/* MODAL DE SELEÇÃO DO TIPO DE CONTRATO */}
+      {modalMemo.aberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-[2px] transition-all">
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-96 border border-slate-200 transform transition-all">
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Gerar Memorando</h3>
+            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+              Processo: <span className="font-mono font-semibold text-slate-800">{modalMemo.processo}</span><br/>
+              Selecione a natureza do serviço para aplicar o modelo de documento correto.
+            </p>
+            
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => confirmarGerarMemo('continuo')}
+                className="w-full py-3 px-4 bg-slate-50 border border-slate-200 hover:border-slate-400 hover:bg-slate-100 rounded-xl text-sm font-semibold text-slate-800 transition-colors flex justify-between items-center group shadow-sm"
+              >
+                <span>Serviço Contínuo</span>
+                <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded-md font-bold group-hover:bg-slate-300 transition-colors">Modelo "Claro"</span>
+              </button>
+              
+              <button 
+                onClick={() => confirmarGerarMemo('nao_continuo')}
+                className="w-full py-3 px-4 bg-slate-50 border border-slate-200 hover:border-slate-400 hover:bg-slate-100 rounded-xl text-sm font-semibold text-slate-800 transition-colors flex justify-between items-center group shadow-sm"
+              >
+                <span>Não Contínuo (Escopo)</span>
+                <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded-md font-bold group-hover:bg-slate-300 transition-colors">Modelo "Bull"</span>
+              </button>
+            </div>
+            
+            <button 
+              onClick={() => setModalMemo({ aberto: false, processo: null })}
+              className="mt-6 w-full py-2 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
